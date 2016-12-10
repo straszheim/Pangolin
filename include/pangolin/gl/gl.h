@@ -55,12 +55,12 @@ class PANGOLIN_EXPORT GlTexture
 public:
     //! internal_format normally one of GL_RGBA8, GL_LUMINANCE8, GL_INTENSITY16
     GlTexture(GLint width, GLint height, GLint internal_format = GL_RGBA8, bool sampling_linear = true, int border = 0, GLenum glformat = GL_RGBA, GLenum gltype = GL_UNSIGNED_BYTE, GLvoid* data = NULL  );
-    
+
 #ifdef CALLEE_HAS_RVALREF
     //! Move Constructor
     GlTexture(GlTexture&& tex);
 #endif
-    
+
     //! Default constructor represents 'no texture'
     GlTexture();
     virtual ~GlTexture();
@@ -69,17 +69,17 @@ public:
 
     //! Delete OpenGL resources and fall back to representing 'no texture'
     void Delete();
-    
+
     //! Reinitialise teture width / height / format
     virtual void Reinitialise(GLsizei width, GLsizei height, GLint internal_format = GL_RGBA8, bool sampling_linear = true, int border = 0, GLenum glformat = GL_RGBA, GLenum gltype = GL_UNSIGNED_BYTE, GLvoid* data = NULL );
-    
+
     void Bind() const;
     void Unbind() const;
-    
+
     //! data_layout normally one of GL_LUMINANCE, GL_RGB, ...
     //! data_type normally one of GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT, GL_FLOAT
     void Upload(const void* image, GLenum data_format = GL_LUMINANCE, GLenum data_type = GL_FLOAT);
-    
+
     //! Upload data to texture, overwriting a sub-region of it.
     //! data ptr contains packed data_w x data_h of pixel data.
     void Upload(const void* data,
@@ -100,18 +100,18 @@ public:
 
     void SetLinear();
     void SetNearestNeighbour();
-    
+
     void RenderToViewport(const bool flip) const;
     void RenderToViewport() const;
     void RenderToViewport(Viewport tex_vp, bool flipx=false, bool flipy=false) const;
     void RenderToViewportFlipY() const;
     void RenderToViewportFlipXFlipY() const;
-    
+
     GLint internal_format;
     GLuint tid;
     GLint width;
     GLint height;
-    
+
 private:
     // Private copy constructor
     GlTexture(const GlTexture&) {}
@@ -130,7 +130,7 @@ struct PANGOLIN_EXPORT GlRenderBuffer
 #endif
 
     ~GlRenderBuffer();
-    
+
     GLint width;
     GLint height;
     GLuint rbid;
@@ -144,22 +144,22 @@ struct PANGOLIN_EXPORT GlFramebuffer
 {
     GlFramebuffer();
     ~GlFramebuffer();
-    
+
     GlFramebuffer(GlTexture& colour, GlRenderBuffer& depth);
     GlFramebuffer(GlTexture& colour0, GlTexture& colour1, GlRenderBuffer& depth);
-    
+
     void Bind() const;
     void Unbind() const;
 
     void Reinitialise();
-    
+
     // Attach Colour texture to frame buffer
     // Return attachment texture is bound to (e.g. GL_COLOR_ATTACHMENT0_EXT)
     GLenum AttachColour(GlTexture& tex);
-    
+
     // Attach Depth render buffer to frame buffer
     void AttachDepth(GlRenderBuffer& rb);
-    
+
     GLuint fbid;
     unsigned attachments;
 };
@@ -179,30 +179,30 @@ struct PANGOLIN_EXPORT GlBuffer
     //! Default constructor represents 'no buffer'
     GlBuffer();
     GlBuffer(GlBufferType buffer_type, GLuint num_elements, GLenum datatype, GLuint count_per_element, GLenum gluse = GL_DYNAMIC_DRAW );
-    
+
 #ifdef CALLEE_HAS_RVALREF
     //! Move Constructor
     GlBuffer(GlBuffer&& tex);
-#endif  
-    
+#endif
+
     ~GlBuffer();
 
     bool IsValid() const;
 
     size_t SizeBytes() const;
-    
+
     void Reinitialise(GlBufferType buffer_type, GLuint num_elements, GLenum datatype, GLuint count_per_element, GLenum gluse );
     void Resize(GLuint num_elements);
-    
+
     void Bind() const;
     void Unbind() const;
     void Upload(const GLvoid* data, GLsizeiptr size_bytes, GLintptr offset = 0);
     void Download(GLvoid* ptr, GLsizeiptr size_bytes, GLintptr offset = 0) const;
-    
+
     GLuint bo;
     GlBufferType buffer_type;
     GLenum gluse;
-    
+
     GLenum datatype;
     GLuint num_elements;
     GLuint count_per_element;
@@ -215,27 +215,27 @@ class PANGOLIN_EXPORT GlSizeableBuffer
 {
 public:
     GlSizeableBuffer(pangolin::GlBufferType buffer_type, GLuint initial_num_elements, GLenum datatype, GLuint count_per_element, GLenum gluse = GL_DYNAMIC_DRAW );
-    
+
     void Clear();
-    
+
 #ifdef USE_EIGEN
     template<typename Derived>
     void Add(const Eigen::DenseBase<Derived>& vec);
-    
+
     template<typename Derived>
     void Update(const Eigen::DenseBase<Derived>& vec, size_t position = 0);
 #endif
-    
+
     size_t start() const;
-    
+
     size_t size() const;
-    
-protected:  
+
+protected:
     void CheckResize(size_t num_verts);
-    
+
     size_t NextSize(size_t min_size) const;
-    
-    size_t  m_num_verts;    
+
+    size_t  m_num_verts;
 };
 
 size_t GlFormatChannels(GLenum data_layout);

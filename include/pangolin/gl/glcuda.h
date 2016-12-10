@@ -36,6 +36,27 @@
 namespace pangolin
 {
 
+  struct CudaCheck {
+    const char* prettyfunction_;
+    const char* file_;
+    int line_;
+
+    CudaCheck(const char* prettyfunction, const char* file, int line)
+      : prettyfunction_(prettyfunction)
+      , file_(file)
+      , line_(line)
+    { }
+
+    void operator=(cudaError_t err) const {
+      if (err == cudaSuccess)
+        return;
+      std::cerr << "***\n*** " << prettyfunction_ << " " << file_ << ":" << line_
+                << " Cuda badness!  Returned " << cudaGetErrorString(err) << "\n***\n";
+    }
+  };
+
+#define CHECK ::pangolin::CudaCheck(__PRETTY_FUNCTION__,__FILE__, __LINE__)
+
 ////////////////////////////////////////////////
 // Interface
 ////////////////////////////////////////////////
@@ -44,15 +65,15 @@ struct GlBufferCudaPtr : public GlBuffer
 {
     //! Default constructor represents 'no buffer'
     GlBufferCudaPtr();
-    
+
     GlBufferCudaPtr(GlBufferType buffer_type, GLuint size_bytes, unsigned int cudause /*= cudaGraphicsMapFlagsNone*/, GLenum gluse /*= GL_DYNAMIC_DRAW*/ );
     GlBufferCudaPtr(GlBufferType buffer_type, GLuint num_elements, GLenum datatype, GLuint count_per_element, unsigned int cudause /*= cudaGraphicsMapFlagsNone*/, GLenum gluse /*= GL_DYNAMIC_DRAW*/ );
-    
+
     PANGOLIN_DEPRECATED
     GlBufferCudaPtr(GlBufferType buffer_type, GLuint width, GLuint height, GLenum datatype, GLuint count_per_element, unsigned int cudause /*= cudaGraphicsMapFlagsNone*/, GLenum gluse /*= GL_DYNAMIC_DRAW*/ );
-    
+
     ~GlBufferCudaPtr();
-    
+
     void Reinitialise(GlBufferType buffer_type, GLuint size_bytes, unsigned int cudause /*= cudaGraphicsMapFlagsNone*/, GLenum gluse /*= GL_DYNAMIC_DRAW*/ );
     void Reinitialise(GlBufferType buffer_type, GLuint num_elements, GLenum datatype, GLuint count_per_element, unsigned int cudause /*= cudaGraphicsMapFlagsNone*/, GLenum gluse /*= GL_DYNAMIC_DRAW*/ );
 
@@ -60,7 +81,7 @@ struct GlBufferCudaPtr : public GlBuffer
      * Use parameters from another @c GlBufferCudaPtr to initialize this buffer.
      */
     void Reinitialise(const GlBufferCudaPtr& other);
-    
+
     unsigned int cuda_use;
     cudaGraphicsResource* cuda_res;
 };
@@ -82,7 +103,7 @@ struct CudaScopedMappedPtr
     ~CudaScopedMappedPtr();
     void* operator*();
     cudaGraphicsResource* res;
-    
+
 private:
     CudaScopedMappedPtr(const CudaScopedMappedPtr&) {}
 };
@@ -93,7 +114,7 @@ struct CudaScopedMappedArray
     ~CudaScopedMappedArray();
     cudaArray* operator*();
     cudaGraphicsResource* res;
-    
+
 private:
     CudaScopedMappedArray(const CudaScopedMappedArray&) {}
 };
@@ -131,8 +152,8 @@ inline GlBufferCudaPtr::GlBufferCudaPtr(GlBufferType buffer_type, GLuint width, 
 
 inline GlBufferCudaPtr::~GlBufferCudaPtr()
 {
-    if(cuda_res) {    
-        cudaGraphicsUnregisterResource(cuda_res);
+    if(cuda_res) {
+      CHECK = cudaGraphicsUnregisterResource(cuda_res);
     }
 }
 
@@ -149,7 +170,7 @@ inline void GlBufferCudaPtr::Reinitialise(GlBufferType buffer_type, GLuint num_e
     GlBuffer::Reinitialise(buffer_type, num_elements, datatype, count_per_element, gluse);
 
     cuda_use = cudause;
-    cudaGraphicsGLRegisterBuffer( &cuda_res, bo, cudause );    
+    cudaGraphicsGLRegisterBuffer( &cuda_res, bo, cudause );
 }
 
 inline void GlBufferCudaPtr::Reinitialise(const GlBufferCudaPtr& other)
@@ -176,7 +197,7 @@ inline GlTextureCudaArray::GlTextureCudaArray(int width, int height, GLint inter
 inline GlTextureCudaArray::~GlTextureCudaArray()
 {
     if(cuda_res) {
-        cudaGraphicsUnregisterResource(cuda_res);
+      CHECK = cudaGraphicsUnregisterResource(cuda_res);
     }
 }
 
@@ -197,31 +218,31 @@ inline void GlTextureCudaArray::Reinitialise(int width, int height, GLint intern
 inline CudaScopedMappedPtr::CudaScopedMappedPtr(const GlBufferCudaPtr& buffer)
     : res(buffer.cuda_res)
 {
-    cudaGraphicsMapResources(1, &res, 0);
+  CHECK = cudaGraphicsMapResources(1, &res, 0);
 }
 
 inline CudaScopedMappedPtr::~CudaScopedMappedPtr()
 {
-    cudaGraphicsUnmapResources(1, &res, 0);
+  CHECK = cudaGraphicsUnmapResources(1, &res, 0);
 }
 
 inline void* CudaScopedMappedPtr::operator*()
 {
     size_t num_bytes;
     void* d_ptr;
-    cudaGraphicsResourceGetMappedPointer(&d_ptr,&num_bytes,res);
+    CHECK = cudaGraphicsResourceGetMappedPointer(&d_ptr,&num_bytes,res);
     return d_ptr;
 }
 
 inline CudaScopedMappedArray::CudaScopedMappedArray(const GlTextureCudaArray& tex)
     : res(tex.cuda_res)
 {
-    cudaGraphicsMapResources(1, &res);
+  CHECK = cudaGraphicsMapResources(1, &res);
 }
 
 inline CudaScopedMappedArray::~CudaScopedMappedArray()
 {
-    cudaGraphicsUnmapResources(1, &res);
+  CHECK = cudaGraphicsUnmapResources(1, &res);
 }
 
 inline cudaArray* CudaScopedMappedArray::operator*()
@@ -244,7 +265,7 @@ template<typename T>
 inline void CopyDevMemtoTex(T* d_img, size_t pitch, GlTextureCudaArray& tex )
 {
     CudaScopedMappedArray arr_tex(tex);
-    cudaMemcpy2DToArray(*arr_tex, 0, 0, d_img, pitch, tex.width*sizeof(T), tex.height, cudaMemcpyDeviceToDevice );
+    CHECK = cudaMemcpy2DToArray(*arr_tex, 0, 0, d_img, pitch, tex.width*sizeof(T), tex.height, cudaMemcpyDeviceToDevice );
 }
 
 inline void swap(GlBufferCudaPtr& a, GlBufferCudaPtr& b)

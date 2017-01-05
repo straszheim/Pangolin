@@ -26,7 +26,7 @@
  */
 
 #include <pangolin/video/drivers/teli.h>
-#include <pangolin/video/video_factory.h>
+#include <pangolin/factory/factory_registry.h>
 #include <pangolin/video/iostream_operators.h>
 #include <XmlFeatures.h>
 
@@ -59,69 +59,66 @@ private:
     }
 };
 
-std::string GetNodeValStr(Teli::CAM_HANDLE cam, Teli::CAM_NODE_HANDLE node)
+std::string GetNodeValStr(Teli::CAM_HANDLE cam, Teli::CAM_NODE_HANDLE node, std::string node_str)
 {
     Teli::TC_NODE_TYPE node_type;
     Teli::CAM_API_STATUS st = Teli::Nd_GetType(cam, node, &node_type);
     if(st != Teli::CAM_API_STS_SUCCESS) {
         throw std::runtime_error("TeliSDK: Unable to get Teli node type.");
     }
+
+    Teli::CAM_API_STATUS status;
 
     switch(node_type) {
     case Teli::TC_NODE_TYPE_INTEGER:
     {
         int64_t val;
-        Teli::CAM_API_STATUS st = Teli::Nd_GetIntValue(cam, node, &val);
-        if(st == Teli::CAM_API_STS_SUCCESS) {
+        status = Teli::Nd_GetIntValue(cam, node, &val);
+        if(status == Teli::CAM_API_STS_SUCCESS) {
             return pangolin::Convert<std::string, int64_t>::Do(val);
-        }else{
-            throw std::runtime_error("TeliSDK: Unable to get Teli parameter");
         }
+        break;
     }
     case Teli::TC_NODE_TYPE_BOOLEAN:
     {
         bool8_t val;
-        Teli::CAM_API_STATUS st = Teli::Nd_GetBoolValue(cam, node, &val);
-        if(st == Teli::CAM_API_STS_SUCCESS) {
+        status = Teli::Nd_GetBoolValue(cam, node, &val);
+        if(status == Teli::CAM_API_STS_SUCCESS) {
             return pangolin::Convert<std::string, bool8_t>::Do(val);
-        }else{
-            throw std::runtime_error("TeliSDK: Unable to get Teli parameter");
         }
+        break;
     }
     case Teli::TC_NODE_TYPE_FLOAT:
     {
         float64_t val;
-        Teli::CAM_API_STATUS st = Teli::Nd_GetFloatValue(cam, node, &val);
-        if(st == Teli::CAM_API_STS_SUCCESS) {
+        status = Teli::Nd_GetFloatValue(cam, node, &val);
+        if(status == Teli::CAM_API_STS_SUCCESS) {
             return pangolin::Convert<std::string, float64_t>::Do(val);
-        }else{
-            throw std::runtime_error("TeliSDK: Unable to get Teli parameter");
         }
+        break;
     }
     case Teli::TC_NODE_TYPE_STRING:
     {
         uint32_t buffer_size = 10*1024;
         char* buffer = new char[buffer_size];
-        Teli::CAM_API_STATUS st = Teli::Nd_GetStrValue(cam, node, buffer, &buffer_size);
+        status = Teli::Nd_GetStrValue(cam, node, buffer, &buffer_size);
         std::string val(buffer);
         delete[] buffer;
-        if(st == Teli::CAM_API_STS_SUCCESS) {
+        if(status == Teli::CAM_API_STS_SUCCESS) {
             return val;
-        }else{
-            throw std::runtime_error("TeliSDK: Unable to get Teli parameter");
         }
+        break;
     }
     case Teli::TC_NODE_TYPE_ENUMERATION:
     {
         uint32_t buffer_size = 10*1024;
         char* buffer = new char[buffer_size];
-        Teli::CAM_API_STATUS st = Teli::Nd_GetEnumStrValue(cam, node, buffer, &buffer_size);
+        status = Teli::Nd_GetEnumStrValue(cam, node, buffer, &buffer_size);
         std::string val(buffer);
-        if(st == Teli::CAM_API_STS_SUCCESS) {
+        if(status == Teli::CAM_API_STS_SUCCESS) {
             return val;
-        }else{
-            throw std::runtime_error("TeliSDK: Unable to get Teli parameter");
         }
+        break;
     }
     case Teli::TC_NODE_TYPE_COMMAND:
     case Teli::TC_NODE_TYPE_REGISTER:
@@ -129,60 +126,55 @@ std::string GetNodeValStr(Teli::CAM_HANDLE cam, Teli::CAM_NODE_HANDLE node)
     case Teli::TC_NODE_TYPE_ENUM_ENTRY:
     case Teli::TC_NODE_TYPE_PORT:
     default:
-        throw std::runtime_error("TeliSDK: Unsupported node_type: " + node_type);
+        throw VideoException("TeliSDK: Unsupported node_type: " + node_type);
+    }
+
+    if(status != Teli::CAM_API_STS_SUCCESS) {
+        Teli::CAM_GENICAM_ERR_MSG psErrMsg;
+        Teli::Misc_GetLastGenICamError(&psErrMsg);
+        throw VideoException("TeliSDK: Unable to get Teli parameter, " + node_str, psErrMsg.pszDescription);
+    }else{
+        throw VideoException("TeliSDK: Unable to get Teli parameter, " + node_str);
     }
 }
 
-void SetNodeValStr(Teli::CAM_HANDLE cam, Teli::CAM_NODE_HANDLE node, std::string val_str)
+void SetNodeValStr(Teli::CAM_HANDLE cam, Teli::CAM_NODE_HANDLE node, std::string node_str, std::string val_str)
 {
     Teli::TC_NODE_TYPE node_type;
     Teli::CAM_API_STATUS st = Teli::Nd_GetType(cam, node, &node_type);
     if(st != Teli::CAM_API_STS_SUCCESS) {
-        throw std::runtime_error("TeliSDK: Unable to get Teli node type.");
+        throw VideoException("TeliSDK: Unable to get Teli node type.");
     }
+
+    Teli::CAM_API_STATUS status = Teli::CAM_API_STS_SUCCESS;
 
     switch(node_type) {
     case Teli::TC_NODE_TYPE_INTEGER:
     {
         const int64_t val = pangolin::Convert<int64_t, std::string>::Do(val_str);
-        Teli::CAM_API_STATUS st = Teli::Nd_SetIntValue(cam, node, val);
-        if(st != Teli::CAM_API_STS_SUCCESS) {
-            throw std::runtime_error("TeliSDK: Unable to set Teli parameter");
-        }
+        status = Teli::Nd_SetIntValue(cam, node, val);
         break;
     }
     case Teli::TC_NODE_TYPE_BOOLEAN:
     {
         const bool8_t val = pangolin::Convert<bool8_t, std::string>::Do(val_str);
-        Teli::CAM_API_STATUS st = Teli::Nd_SetBoolValue(cam, node, val);
-        if(st != Teli::CAM_API_STS_SUCCESS) {
-            throw std::runtime_error("TeliSDK: Unable to set Teli parameter");
-        }
+        status = Teli::Nd_SetBoolValue(cam, node, val);
         break;
     }
     case Teli::TC_NODE_TYPE_FLOAT:
     {
         const float64_t val = pangolin::Convert<float64_t, std::string>::Do(val_str);
-        Teli::CAM_API_STATUS st = Teli::Nd_SetFloatValue(cam, node, val);
-        if(st != Teli::CAM_API_STS_SUCCESS) {
-            throw std::runtime_error("TeliSDK: Unable to set Teli parameter");
-        }
+        status = Teli::Nd_SetFloatValue(cam, node, val);
         break;
     }
     case Teli::TC_NODE_TYPE_STRING:
     {
-        Teli::CAM_API_STATUS st = Teli::Nd_SetStrValue(cam, node, val_str.c_str());
-        if(st != Teli::CAM_API_STS_SUCCESS) {
-            throw std::runtime_error("TeliSDK: Unable to set Teli parameter");
-        }
+        status = Teli::Nd_SetStrValue(cam, node, val_str.c_str());
         break;
     }
     case Teli::TC_NODE_TYPE_ENUMERATION:
     {
-        Teli::CAM_API_STATUS st = Teli::Nd_SetEnumStrValue(cam, node, val_str.c_str());
-        if(st != Teli::CAM_API_STS_SUCCESS) {
-            throw std::runtime_error("TeliSDK: Unable to set Teli parameter");
-        }
+        status = Teli::Nd_SetEnumStrValue(cam, node, val_str.c_str());
         break;
     }
     case Teli::TC_NODE_TYPE_COMMAND:
@@ -191,11 +183,17 @@ void SetNodeValStr(Teli::CAM_HANDLE cam, Teli::CAM_NODE_HANDLE node, std::string
     case Teli::TC_NODE_TYPE_ENUM_ENTRY:
     case Teli::TC_NODE_TYPE_PORT:
     default:
-        throw std::runtime_error("TeliSDK: Unsupported node_type: " + node_type);
+        throw VideoException("TeliSDK: Unsupported node_type: " + node_type);
+    }
+
+    if(status != Teli::CAM_API_STS_SUCCESS) {
+        Teli::CAM_GENICAM_ERR_MSG psErrMsg;
+        Teli::Misc_GetLastGenICamError(&psErrMsg);
+        throw VideoException("TeliSDK: Unable to set Teli parameter, " + node_str, psErrMsg.pszDescription);
     }
 }
 
-TeliVideo::TeliVideo(const Params& uri)
+TeliVideo::TeliVideo(const Params& p)
 	: cam(0), strm(0), hStrmCmpEvt(0)
 {
     TeliSystem::Instance();
@@ -206,25 +204,36 @@ TeliVideo::TeliVideo(const Params& uri)
         throw pangolin::VideoException("Unable to enumerate TeliSDK cameras.");
 
     if (num_cams == 0)
-     throw pangolin::VideoException("No TeliSDK Cameras available.");
+        throw pangolin::VideoException("No TeliSDK Cameras available.");
 
     // Default to rogue values
-    ImageRoi roi;
     std::string sn;
     std::string mn;
     int cam_index = 0;
 
     Params device_params;
 
-    for(Params::ParamMap::const_iterator it = uri.params.begin(); it != uri.params.end(); it++) {
+    for(Params::ParamMap::const_iterator it = p.params.begin(); it != p.params.end(); it++) {
         if(it->first == "model"){
             mn = it->second;
         } else if(it->first == "sn"){
             sn = it->second;
         } else if(it->first == "idx"){
-            cam_index = uri.Get<int>("idx", 0);
+            cam_index = p.Get<int>("idx", 0);
+        } else if(it->first == "size") {
+            const ImageDim dim = p.Get<ImageDim>("size", ImageDim(0,0) );
+            device_params.Set("Width"  , dim.x);
+            device_params.Set("Height" , dim.y);
+        } else if(it->first == "pos") {
+            const ImageDim pos = p.Get<ImageDim>("pos", ImageDim(0,0) );
+            device_params.Set("OffsetX"  , pos.x);
+            device_params.Set("OffsetY" , pos.y);
         } else if(it->first == "roi") {
-            roi = uri.Get<ImageRoi>("roi", ImageRoi(0,0,0,0) );
+            const ImageRoi roi = p.Get<ImageRoi>("roi", ImageRoi(0,0,0,0) );
+            device_params.Set("Width"  , roi.w);
+            device_params.Set("Height" , roi.h);
+            device_params.Set("OffsetX", roi.x);
+            device_params.Set("OffsetY", roi.y);
         } else {
             device_params.Set(it->first, it->second);
         }
@@ -242,23 +251,8 @@ TeliVideo::TeliVideo(const Params& uri)
     if (uiStatus != Teli::CAM_API_STS_SUCCESS)
         throw pangolin::VideoException("TeliSDK: Error opening camera");
 
-    uint32_t width = 0;
-    uint32_t height = 0;
-    uiStatus = Teli::GetCamSensorWidth(cam, &width);
-    if (uiStatus != Teli::CAM_API_STS_SUCCESS)
-      throw pangolin::VideoException("Unable to get TeliSDK Camera dimensions");
-
-    uiStatus = Teli::GetCamSensorHeight(cam, &height);
-    if (uiStatus != Teli::CAM_API_STS_SUCCESS)
-        throw pangolin::VideoException("Unable to get TeliSDK Camera dimensions");
-
-    // If roi not set, use cameras native resolution.
-    if(roi.w ==0 || roi.h==0) {
-        roi = ImageRoi(0, 0, width, height);
-    }
-
     SetDeviceParams(device_params);
-    Initialise(roi);
+    Initialise();
 }
 
 std::string TeliVideo::GetParameter(const std::string& name)
@@ -266,7 +260,7 @@ std::string TeliVideo::GetParameter(const std::string& name)
     Teli::CAM_NODE_HANDLE node;
     Teli::CAM_API_STATUS st = Teli::Nd_GetNode(cam, name.c_str(), &node);
     if( st == Teli::CAM_API_STS_SUCCESS) {
-        return GetNodeValStr(cam, node);
+        return GetNodeValStr(cam, node, name);
     }else{
         throw std::runtime_error("TeliSDK: Unable to get reference to node:" + name);
     }
@@ -277,19 +271,15 @@ void TeliVideo::SetParameter(const std::string& name, const std::string& value)
     Teli::CAM_NODE_HANDLE node;
     Teli::CAM_API_STATUS st = Teli::Nd_GetNode(cam, name.c_str(), &node);
     if( st == Teli::CAM_API_STS_SUCCESS) {
-        SetNodeValStr(cam, node, value);
+        SetNodeValStr(cam, node, name, value);
     }else{
         throw std::runtime_error("TeliSDK: Unable to get reference to node:" + name);
     }
 }
 
-void TeliVideo::Initialise(const ImageRoi& roi)
+void TeliVideo::Initialise()
 {
-    Teli::CAM_API_STATUS uiStatus = Teli::SetCamRoi(cam, (uint32_t)roi.w, (uint32_t)roi.h, (uint32_t)roi.x, (uint32_t)roi.y);
-    if (uiStatus != Teli::CAM_API_STS_SUCCESS) {
-        std::cerr << "Error: " << std::hex << uiStatus << std::endl;
-        throw pangolin::VideoException("TeliSDK: Error setting SetCamRoi.");
-    }
+    Teli::CAM_API_STATUS uiStatus = Teli::CAM_API_STS_SUCCESS;
 
     // Create completion event object for stream.
 #ifdef _WIN_
@@ -343,14 +333,37 @@ void TeliVideo::Initialise(const ImageRoi& roi)
 
     size_bytes = 0;
     
+    // Use width and height reported by camera
+    uint32_t w = 0;
+    uint32_t h = 0;
+    if( Teli::GetCamWidth(cam, &w) != Teli::CAM_API_STS_SUCCESS || Teli::GetCamHeight(cam, &h) != Teli::CAM_API_STS_SUCCESS) {
+        throw pangolin::VideoException("TeliSDK: Unable to establish stream dimensions.");
+    }
+
     const int n = 1;
     for(size_t c=0; c < n; ++c) {
-        const StreamInfo stream_info(pfmt, roi.w, roi.h, (roi.w*pfmt.bpp) / 8, 0);
-        streams.push_back(stream_info);        
+        const StreamInfo stream_info(pfmt, w, h, (w*pfmt.bpp) / 8, 0);
+        streams.push_back(stream_info);
         size_bytes += uiPyldSize;
     }
 
-    Start();
+    InitPangoDeviceProperties();
+}
+
+void TeliVideo::InitPangoDeviceProperties()
+{
+
+    Teli::CAM_INFO info;
+    Teli::Cam_GetInformation(cam, 0, &info);
+
+    // Store camera details in device properties
+    device_properties["SerialNumber"] = std::string(info.szSerialNumber);
+    device_properties["VendorName"] = std::string(info.szManufacturer);
+    device_properties["ModelName"] = std::string(info.szModelName);
+    device_properties["ManufacturerInfo"] = std::string(info.sU3vCamInfo.szManufacturerInfo);
+    device_properties["Version"] = std::string(info.sU3vCamInfo.szDeviceVersion);
+
+    // TODO: Enumerate other settings.
 }
 
 void TeliVideo::SetDeviceParams(const Params& p)
@@ -483,15 +496,15 @@ const json::value& TeliVideo::FrameProperties() const
 
 PANGOLIN_REGISTER_FACTORY(TeliVideo)
 {
-    struct TeliVideoFactory : public VideoFactoryInterface {
-        std::unique_ptr<VideoInterface> OpenVideo(const Uri& uri) override {
+    struct TeliVideoFactory : public FactoryInterface<VideoInterface> {
+        std::unique_ptr<VideoInterface> Open(const Uri& uri) override {
             return std::unique_ptr<VideoInterface>(new TeliVideo(uri));
         }
     };
 
     auto factory = std::make_shared<TeliVideoFactory>();
-    VideoFactoryRegistry::I().RegisterFactory(factory, 10, "teli");
-    VideoFactoryRegistry::I().RegisterFactory(factory, 10, "u3v");
+    FactoryRegistry<VideoInterface>::I().RegisterFactory(factory, 10, "teli");
+    FactoryRegistry<VideoInterface>::I().RegisterFactory(factory, 10, "u3v");
 }
 
 }

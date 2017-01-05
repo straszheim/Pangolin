@@ -26,9 +26,12 @@
  */
 
 #include <pangolin/video/drivers/merge.h>
-#include <pangolin/video/video_factory.h>
+#include <pangolin/factory/factory_registry.h>
 #include <pangolin/video/iostream_operators.h>
 #include <pangolin/plot/range.h>
+#include <assert.h> // assert()
+
+#include <assert.h>
 
 namespace pangolin
 {
@@ -69,7 +72,7 @@ MergeVideo::MergeVideo(std::unique_ptr<VideoInterface>& src_, const std::vector<
 
 MergeVideo::~MergeVideo()
 {
-    
+
 }
 
 //! Implement VideoInput::Start()
@@ -138,8 +141,8 @@ std::vector<VideoInterface*>& MergeVideo::InputStreams()
 
 PANGOLIN_REGISTER_FACTORY(MergeVideo)
 {
-    struct MergeVideoFactory : public VideoFactoryInterface {
-        std::unique_ptr<VideoInterface> OpenVideo(const Uri& uri) override {
+    struct MergeVideoFactory : public FactoryInterface<VideoInterface> {
+        std::unique_ptr<VideoInterface> Open(const Uri& uri) override {
             const ImageDim dim = uri.Get<ImageDim>("size", ImageDim(0,0));
 
             std::unique_ptr<VideoInterface> subvid = pangolin::OpenVideo(uri.url);
@@ -156,7 +159,7 @@ PANGOLIN_REGISTER_FACTORY(MergeVideo)
         }
     };
 
-    VideoFactoryRegistry::I().RegisterFactory(std::make_shared<MergeVideoFactory>(), 10, "merge");
+    FactoryRegistry<VideoInterface>::I().RegisterFactory(std::make_shared<MergeVideoFactory>(), 10, "merge");
 }
 
 }

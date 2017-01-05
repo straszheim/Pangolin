@@ -81,7 +81,7 @@ namespace pangolin
     }
   };
 
-#define CHECK ::pangolin::CudaCheck(__PRETTY_FUNCTION__,__FILE__, __LINE__)
+#define PG_CUDACHECK ::pangolin::CudaCheck(__PRETTY_FUNCTION__,__FILE__, __LINE__)
 
   ////////////////////////////////////////////////
   // Interface
@@ -114,14 +114,14 @@ namespace pangolin
 
   private:
     void map() const {
-      CHECK = cudaGraphicsMapResources(1, const_cast<cudaGraphicsResource**>(&cuda_res), 0);
+      PG_CUDACHECK = cudaGraphicsMapResources(1, const_cast<cudaGraphicsResource**>(&cuda_res), 0);
       mapped_ = true;
     }
 
     bool mapped() const { return mapped_; }
 
     void unmap() const {
-      CHECK = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource**>(&cuda_res), 0);
+      PG_CUDACHECK = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource**>(&cuda_res), 0);
       mapped_ = false;
     }
 
@@ -194,7 +194,7 @@ namespace pangolin
   inline GlBufferCudaPtr::~GlBufferCudaPtr()
   {
     if(cuda_res) {
-      CHECK = cudaGraphicsUnregisterResource(cuda_res);
+      PG_CUDACHECK = cudaGraphicsUnregisterResource(cuda_res);
     }
   }
 
@@ -238,7 +238,7 @@ namespace pangolin
   inline GlTextureCudaArray::~GlTextureCudaArray()
   {
     if(cuda_res) {
-      CHECK = cudaGraphicsUnregisterResource(cuda_res);
+      PG_CUDACHECK = cudaGraphicsUnregisterResource(cuda_res);
     }
   }
 
@@ -274,19 +274,19 @@ namespace pangolin
     size_t num_bytes;
     void* d_ptr;
     assert(buf.mapped());
-    CHECK = cudaGraphicsResourceGetMappedPointer(&d_ptr,&num_bytes,buf.cuda_res);
+    PG_CUDACHECK = cudaGraphicsResourceGetMappedPointer(&d_ptr,&num_bytes,buf.cuda_res);
     return d_ptr;
   }
 
   inline CudaScopedMappedArray::CudaScopedMappedArray(const GlTextureCudaArray& tex)
     : res(tex.cuda_res)
   {
-    CHECK = cudaGraphicsMapResources(1, &res);
+    PG_CUDACHECK = cudaGraphicsMapResources(1, &res);
   }
 
   inline CudaScopedMappedArray::~CudaScopedMappedArray()
   {
-    CHECK = cudaGraphicsUnmapResources(1, &res);
+    PG_CUDACHECK = cudaGraphicsUnmapResources(1, &res);
   }
 
   inline cudaArray* CudaScopedMappedArray::operator*()
@@ -309,7 +309,7 @@ namespace pangolin
     inline void CopyDevMemtoTex(T* d_img, size_t pitch, GlTextureCudaArray& tex )
     {
       CudaScopedMappedArray arr_tex(tex);
-      CHECK = cudaMemcpy2DToArray(*arr_tex, 0, 0, d_img, pitch, tex.width*sizeof(T), tex.height, cudaMemcpyDeviceToDevice );
+      PG_CUDACHECK = cudaMemcpy2DToArray(*arr_tex, 0, 0, d_img, pitch, tex.width*sizeof(T), tex.height, cudaMemcpyDeviceToDevice );
     }
 
   inline void swap(GlBufferCudaPtr& a, GlBufferCudaPtr& b)

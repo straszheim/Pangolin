@@ -25,42 +25,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#pragma once
+#include <pangolin/utils/format_string.h>
 
-#include <pangolin/config.h>
+namespace pangolin {
 
-// Include portable printf-style format macros
-#define __STDC_FORMAT_MACROS
-
-#ifdef _GCC_
-#  define PANGOLIN_DEPRECATED __attribute__((deprecated))
-#elif defined _MSVC_
-#  define PANGOLIN_DEPRECATED __declspec(deprecated)
-#else
-#  define PANGOLIN_DEPRECATED
-#endif
-
-#ifdef _MSVC_
-#   define __thread __declspec(thread)
-#   include <pangolin/pangolin_export.h>
-#else
-#   define PANGOLIN_EXPORT
-#endif //_MSVC_
-
-#define PANGOLIN_UNUSED(x) (void)(x)
-
-#ifdef _APPLE_IOS_
-// Not supported on this platform.
-#define __thread
-#endif // _APPLE_IOS_
-
-// HOST / DEVICE Annotations
-#ifdef __CUDACC__
-#  include <cuda_runtime.h>
-#  define PANGO_HOST_DEVICE __host__ __device__
-#else
-#  define PANGO_HOST_DEVICE
-#endif
-
-#include <pangolin/utils/assert.h>
-#include <pangolin/utils/log.h>
+}

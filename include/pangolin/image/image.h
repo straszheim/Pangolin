@@ -27,7 +27,14 @@
 
 #pragma once
 
+#include <pangolin/platform.h>
 #include <cstddef>
+
+#ifdef PANGOLIN_ENABLE_BOUNDS_CHECKS
+#   define PANGOLIN_ENABLE_BOUNDS_CHECKS( x ) PANGOLIN_ASSERT(x)
+#else
+#   define PANGOLIN_ENABLE_BOUNDS_CHECKS( x )
+#endif
 
 namespace pangolin
 {
